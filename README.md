@@ -1,6 +1,6 @@
 #calabash-clj
 
-Functional testing on android using calabash-jvm. The project includes some automation for building android project, building instrumentation for project and launching emulators.
+Functional testing on android using [calabash-jvm] (https://github.com/calabash/calabash-ios/tree/master/calabash-jvm). The project includes some automation for building android project, building instrumentation for project and launching emulators.
 
 ## Basic usage
 The following code block will do these things.
