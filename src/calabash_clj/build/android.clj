@@ -42,6 +42,7 @@
   [project-path]
   (let [build-output (run-with-dir
                        project-path
+                       "android update project -p . --target 13"
                        "ant clean"
                        "ant -e debug")]
     (if (seq (:err build-output))
@@ -117,6 +118,7 @@
 (defn -main
   "Build a project and run tests on list of emulators"
   [project-path emulators calabash-tests]
+  (info (format "Copying test-server to %s" project-path))
   (copy-test-server project-path)
   (info "Building project")
   (let [apk-path (build-project project-path)]
