@@ -11,8 +11,8 @@ The following code block will do these things.
 - Start running calabash tests
 
 ```clj
-(require [calabash-clj.build.android :as android-build]
-        [calabash-clj.platforms.android :as android])
+(require '[calabash-clj.build.android :as android-build]
+         '[calabash-clj.platforms.android :as android])
 
 (android-build/-main "/path/to/android-project/"
                      ["froyo" "gingerbread"] ;; List of emulator avds.
