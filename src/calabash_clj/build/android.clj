@@ -26,10 +26,11 @@
 (defn get-apk-info
   [apk-path]
   (let [apk-info-str (:out (run-sh (str "aapt dump badging " apk-path)))]
-    {:package-name (second (re-find #"package: name='([a-zA-Z\.]*)'"
+    {:package-name (second (re-find #"package: name='([0-9a-zA-Z\.]*)'"
                                     apk-info-str))
-     :main-activity (second (re-find #"launchable-activity: name='([a-zA-Z\.]*)'"
+     :main-activity (second (re-find #"launchable-activity: name='([0-9a-zA-Z\.]*)'"
                                      apk-info-str))}))
+
 
 (defn build-output->apk-name
   [build-output]
