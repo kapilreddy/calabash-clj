@@ -114,6 +114,12 @@
   (let [server-tar-loc (.getCanonicalPath (clojure.java.io/as-file (clojure.java.io/resource server-tar)))]
     (run-sh (format "tar zxf %s -C %s" server-tar-loc project-path))))
 
+(defn restart-adb
+  []
+  (run-sh
+   "adb kill-server"
+   "adb start-server"))
+
 
 (defn -main
   "Build a project and run tests on list of emulators"
@@ -122,6 +128,8 @@
   (copy-test-server project-path)
   (info "Building project")
   (let [apk-path (build-project project-path)]
+    (info "Restarting adb")
+    (restart-adb)
     (info "Starting emulators")
     (start-emulators emulators)
     (loop [devices (get-device-lines (list-emulators))]
