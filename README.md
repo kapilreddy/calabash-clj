@@ -20,7 +20,10 @@ The following code block will do these things.
                          ;; Write calabash queries
                          (android/touch "css" "div")))
 ```
-
+Add internet permission in your project's AndroidManifest.xml for test server running on android.
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+```
 
 ## Future
 - Add support for real devices.
