@@ -1,12 +1,6 @@
 (ns calabash-clj.platforms.util
   (:require [calabash-jvm.http :as http]))
 
-(defn run-on-device
-  [fn port]
-  (binding [calabash-jvm.env/*endpoint* (format "http://localhost:%s" port)]
-    (fn)))
-
-
 (defn retry
   [fn & {:keys [retries max-retries]
          :or {retries 0 max-retries 10}}]

@@ -1,5 +1,5 @@
 (ns calabash-clj.build.android
-  (:require [calabash-clj.platforms.util :as util])
+  (:require [calabash-clj.platforms.android :as android])
   (:use [clojure.tools.logging :only [info error]]
         [calabash-clj.util]))
 
@@ -151,6 +151,8 @@
           (instrument-device package-name name)))
       (Thread/sleep 10000)
       (info "Running calabash tests")
-      (doseq [{:keys [server-port]} devices]
-        (future (util/run-on-device calabash-tests
-                                    server-port))))))
+      (doseq [{:keys [server-port port]} devices]
+        (future (android/run-on-device calabash-tests
+                                       server-port
+                                       port)))
+      devices)))
