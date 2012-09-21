@@ -1,26 +1,13 @@
 (ns calabash-clj.build.android
-  (:require [clojure.java.shell :as shell]
-            [calabash-clj.platforms.util :as util])
-  (:use [clojure.tools.logging :only [info error]]))
+  (:require [calabash-clj.platforms.util :as util])
+  (:use [clojure.tools.logging :only [info error]]
+        [calabash-clj.util]))
 
 (def android-server-port 7102)
 
 (def server-apk-path "/test-server/bin/Test.apk")
 
 (def server-tar "test_server.tar.gz")
-
-(defn run-sh
-  [& commands]
-  (let [op (apply shell/sh (clojure.string/split (first commands) #"\s"))]
-    (if (empty? (rest commands))
-      op
-      (recur (rest commands)))))
-
-
-(defn run-with-dir
-  [dir & commands]
-  (binding [shell/*sh-dir* dir]
-    (apply run-sh commands)))
 
 
 (defn get-apk-info
