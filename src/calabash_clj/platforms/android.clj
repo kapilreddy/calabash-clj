@@ -32,10 +32,17 @@
 
 
 (defn enter-text
-  [text type selector]
-  (command "set_text" type selector text))
+  ([text type selector]
+     (command "set_text" type selector text))
+  ([text]
+     (run-sh (format "adb -s emulator-%s shell input text %s" *device-port* text))))
 
 
 (defn query
   [type selector]
   (command "query" type selector))
+
+
+(defn press-key
+  [key]
+  (run-sh (format "adb -s emulator-%s shell input keyevent %s" *device-port* key)))
