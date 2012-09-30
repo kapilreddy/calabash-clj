@@ -59,8 +59,8 @@
 
 (defn unlock-device
   [device-name]
-  (run-sh (format "adb -s %s shell input keyevent 82" device-name))
-  (run-sh (format "adb -s %s shell input keyevent 4" device-name)))
+  (run-sh (format "adb -s %s shell input keyevent 82" device-name)
+          (format "adb -s %s shell input keyevent 4" device-name)))
 
 
 (defn instrument-device
@@ -74,7 +74,7 @@
     (future (run-sh (format "emulator -avd %s" avd)))))
 
 
-(defn list-emulators
+(defn list-devices
   []
   (:out (run-sh "adb devices")))
 
@@ -82,24 +82,23 @@
 (defn get-device-lines
   [device-list-str]
   (let [[first & devices] (clojure.string/split device-list-str #"\n")]
-       devices))
+    devices))
 
 
 (defn parse-devices-list
   [device-list-str]
   (map (fn [str]
          (let [[name status] (clojure.string/split str #"\t")]
-           {:port (Integer/parseInt (re-find #"\d{4}" name))
-            :name name
+           {:name name
             :status status}))
        (get-device-lines device-list-str)))
-
 
 
 (defn copy-test-server
   [project-path]
   (let [server-tar-loc (.getCanonicalPath (clojure.java.io/as-file (clojure.java.io/resource server-tar)))]
     (run-sh (format "tar zxf %s -C %s" server-tar-loc project-path))))
+
 
 (defn restart-adb
   []
@@ -108,30 +107,49 @@
    "adb start-server"))
 
 
-(defn -main
+(defn get-device-ip
+  [name]
+  (let [ip-out (:out (run-sh
+                      (format "adb -s %s shell ifconfig eth0" name)))]
+    (second (re-find #"ip\s([\d\.]*)\s" ip-out))))
+
+
+(defn is-emulator?
+  [name]
+  (re-find #"^emulator" name))
+
+
+(defn wait-for-emulators
+  [emulators]
+  (loop [devices (get-device-lines (list-devices))]
+    (when-not (and (>= (count devices)
+                       (count emulators))
+                   (zero? (count (filter #(= "offline"
+                                             (:status %1))
+                                         (parse-devices-list (list-devices))))))
+      (do (Thread/sleep 2000)
+          (recur (get-device-lines (list-devices)))))))
+
+
+(defn run-on-connected-devices
   "Build a project and run tests on list of emulators"
-  [project-path emulators calabash-tests]
+  [project-path calabash-tests]
   (info (format "Copying test-server to %s" project-path))
   (copy-test-server project-path)
   (info "Building project")
   (let [apk-path (build-project project-path)]
-    (info "Restarting adb")
-    (restart-adb)
-    (info "Starting emulators")
-    (start-emulators emulators)
-    (loop [devices (get-device-lines (list-emulators))]
-      (when-not (and (= (count devices)
-                        (count emulators))
-                     (zero? (count (filter #(= "offline"
-                                               (:status %1))
-                                           (parse-devices-list (list-emulators))))))
-        (do (Thread/sleep 2000)
-            (recur (get-device-lines (list-emulators))))))
-    (Thread/sleep 2000)
+    (println apk-path)
     (info "Installing app on devices")
-    (let [devices (map (fn [device n]
-                         (assoc device :server-port n))
-                       (parse-devices-list (list-emulators))
+    (let [devices (map (fn [{:keys [name] :as device} n]
+                         (let [emulator? (is-emulator? name)]
+                           (assoc device :server-port (if emulator?
+                                                        n
+                                                        android-server-port)
+                                  :emulator? emulator?
+                                  :ip (if emulator?
+                                        "localhost"
+                                        (get-device-ip name)))))
+                       (parse-devices-list (list-devices))
                        (range 5010 5100))]
       (doseq [{:keys [name]} devices]
         (install-apk apk-path name)
@@ -151,8 +169,16 @@
           (instrument-device package-name name)))
       (Thread/sleep 10000)
       (info "Running calabash tests")
-      (doseq [{:keys [server-port port]} devices]
-        (future (android/run-on-device calabash-tests
-                                       server-port
-                                       port)))
+      (android/run-on-devices calabash-tests
+                              devices)
       devices)))
+
+
+(defn run-on-emulators
+  "Build a project and run tests on list of emulators"
+  [emulators project-path calabash-tests]
+  (restart-adb)
+  (info "Starting emulators")
+  (start-emulators emulators)
+  (wait-for-emulators emulators)
+  (run-on-connected-devices project-path calabash-tests))
