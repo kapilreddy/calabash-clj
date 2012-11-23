@@ -107,11 +107,17 @@
    "adb start-server"))
 
 
+(defn get-device-ip*
+  [name interface]
+  (let [ip-out (:out (run-sh
+                      (format "adb -s %s shell ifconfig %s" name interface)))]
+    (second (re-find #"ip\s([\d\.]*)\s" ip-out))))
+
+
 (defn get-device-ip
   [name]
-  (let [ip-out (:out (run-sh
-                      (format "adb -s %s shell ifconfig eth0" name)))]
-    (second (re-find #"ip\s([\d\.]*)\s" ip-out))))
+  (or (get-device-ip* name "eth0")
+      (get-device-ip* name "wlan0")))
 
 
 (defn is-emulator?
