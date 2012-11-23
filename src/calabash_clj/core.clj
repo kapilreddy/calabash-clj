@@ -5,5 +5,6 @@
 (defn -main
   "Build an android project and run calabash queries on it."
   [project-path emulators]
-  (android-build/run-on-emulators project-path emulators (fn []
-                                                               (android/command "click_on_view_by_id" "button1"))))
+  (android-build/run-on-emulators emulators project-path (fn []
+                                                           (android/command "click_on_view_by_id"
+                                                                            "button1"))))

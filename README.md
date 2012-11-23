@@ -17,17 +17,27 @@ The following code block will do these things.
 (require '[calabash-clj.build.android :as android-build]
          '[calabash-clj.platforms.android :as android])
 
-(android-build/-main "/path/to/android-project/"
-                     ["froyo" "gingerbread"] ;; List of emulator avds.
-                     (fn []
-                         ;; Write calabash queries
-                         (android/touch "css" "div")))
+(android-build/run-on-emulators ["froyo" "gingerbread"] ;; List of emulator avds.
+                                "/path/to/android-project/"
+                                (fn []
+                                  ;; Write calabash queries
+                                  (android/command "click_on_view_by_id" "button1")))
 ```
 Add internet permission in your project's AndroidManifest.xml for test server running on android.
 ```xml
 <uses-permission android:name="android.permission.INTERNET" />
 ```
 
+To run it on connected physical devices and emulators.
+```clj
+(require '[calabash-clj.build.android :as android-build]
+         '[calabash-clj.platforms.android :as android])
+
+(android-build/run-on-connected-devices "/path/to/android-project/"
+                                        (fn []
+                                          ;; Write calabash queries
+                                          (android/command "click_on_view_by_id" "button1")))
+```
+
 ## Future
-- Add support for real devices.
 - Add automation for builds and simulator for iOS.
