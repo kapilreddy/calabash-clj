@@ -36,7 +36,7 @@
       (throw (Exception. (:err build-output)))
       (let [apk-path (build-output->apk-name (:out build-output))
             {:keys [package-name main-activity]} (get-apk-info apk-path)
-            test-build-command (format "ant -e debug -Dtested.package_name=\"%s\" -Dtested.main_activity=\"%s\" -Dtested.project.apk=\"%s\" -Dandroid.api.level=\"13\" -Dkey.store=\"$HOME/.android/debug.keystore\" -Dkey.store.password=\"android\" -Dkey.alias=\"androiddebugkey\" -Dkey.alias.password=\"android\" "
+            test-build-command (format "ant -e package -Dtested.package_name=\"%s\" -Dtested.main_activity=\"%s\" -Dtested.project.apk=\"%s\" -Dandroid.api.level=\"13\" -Dkey.store=\"$HOME/.android/debug.keystore\" -Dkey.store.password=\"android\" -Dkey.alias=\"androiddebugkey\" -Dkey.alias.password=\"android\" "
                                        package-name main-activity apk-path)
             test-build-op (run-with-dir
                             (str project-path "test-server")
