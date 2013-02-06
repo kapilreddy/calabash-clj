@@ -9,6 +9,8 @@
 
 (def server-tar "test_server.tar.gz")
 
+(def android-target-version 16)
+
 
 (defn get-apk-info
   [apk-path]
@@ -29,15 +31,15 @@
   [project-path]
   (let [build-output (run-with-dir
                        project-path
-                       "android update project -p . --target 13"
+                       (format "android update project -p . --target %s" android-target-version)
                        "ant clean"
                        "ant -e debug")]
     (if (seq (:err build-output))
       (throw (Exception. (:err build-output)))
       (let [apk-path (build-output->apk-name (:out build-output))
             {:keys [package-name main-activity]} (get-apk-info apk-path)
-            test-build-command (format "ant -e package -Dtested.package_name=\"%s\" -Dtested.main_activity=\"%s\" -Dtested.project.apk=\"%s\" -Dandroid.api.level=\"13\" -Dkey.store=\"$HOME/.android/debug.keystore\" -Dkey.store.password=\"android\" -Dkey.alias=\"androiddebugkey\" -Dkey.alias.password=\"android\" "
-                                       package-name main-activity apk-path)
+            test-build-command (format "ant -e package -Dtested.package_name=\"%s\" -Dtested.main_activity=\"%s\" -Dtested.project.apk=\"%s\" -Dandroid.api.level=\"%s\" -Dkey.store=\"$HOME/.android/debug.keystore\" -Dkey.store.password=\"android\" -Dkey.alias=\"androiddebugkey\" -Dkey.alias.password=\"android\" "
+                                       package-name main-activity apk-path android-target-version)
             test-build-op (run-with-dir
                             (str project-path "test-server")
                             "ant clean"
