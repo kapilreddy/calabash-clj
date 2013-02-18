@@ -172,14 +172,16 @@
         (unlock-device name))
       (Thread/sleep 2000)
       (info "Starting Calabash servers")
-      (let [{:keys [package-name]} (get-apk-info apk-path)]
-        (doseq [{:keys [name]} devices]
-          (instrument-device package-name name)))
-      (Thread/sleep 10000)
-      (info "Running calabash tests")
-      (android/run-on-devices calabash-tests
-                              devices)
-      devices)))
+      (let [reset-&-run-tests (fn [tests]
+                                (let [{:keys [package-name]} (get-apk-info apk-path)]
+                                  (doseq [{:keys [name]} devices]
+                                    (instrument-device package-name name)))
+                                (Thread/sleep 10000)
+                                (info "Running calabash tests")
+                                (android/run-on-devices tests
+                                                        devices))]
+        (reset-&-run-tests calabash-tests)
+        reset-&-run-tests))))
 
 
 (defn run-on-emulators
