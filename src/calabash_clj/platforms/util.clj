@@ -5,7 +5,7 @@
   [fn & {:keys [retries max-retries]
          :or {retries 0 max-retries 10}}]
   (try
-    (println (fn))
+    (fn)
     (catch Exception e
       (when (= retries max-retries)
         true)
