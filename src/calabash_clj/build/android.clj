@@ -1,7 +1,8 @@
 (ns calabash-clj.build.android
   (:require [calabash-clj.platforms.android :as android])
   (:use [clojure.tools.logging :only [info error]]
-        [calabash-clj.util]))
+        [clojure.java.io :only [resource copy file]]
+        [calabash-clj.util :only [run-sh run-with-dir]]))
 
 (def android-server-port 7102)
 
@@ -98,8 +99,10 @@
 
 (defn copy-test-server
   [project-path]
-  (let [server-tar-loc (.getCanonicalPath (clojure.java.io/as-file (clojure.java.io/resource server-tar)))]
-    (run-sh (format "tar zxf %s -C %s" server-tar-loc project-path))))
+  (let [server-tar-name "test_server.tar.gz"
+        tmp-loc (format "/tmp/%s" server-tar-name)]
+    (copy (file (resource server-tar-name)) (file tmp-loc))
+    (run-sh (format "tar zxf %s -C %s" tmp-loc project-path))))
 
 
 (defn restart-adb
