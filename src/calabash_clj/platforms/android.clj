@@ -12,16 +12,17 @@
 
 (defn run-on-device
   [fn ip server-port device-name]
-  (println ip server-port)
   (binding [calabash-jvm.env/*endpoint* (format "http://%s:%s" ip server-port)
             *device-name* device-name]
     (fn)))
 
 
 (defn run-on-devices
-  [fn devices]
-  (doseq [{:keys [ip server-port name]} devices]
-    (run-on-device fn ip server-port name)))
+  [test-fn devices]
+  (map (fn [{:keys [ip server-port name]}]
+         (println ip server-port name)
+         (run-on-device test-fn ip server-port name))
+       devices))
 
 
 (defn command
