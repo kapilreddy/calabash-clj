@@ -179,7 +179,7 @@
                                 (let [{:keys [package-name]} (get-apk-info apk-path)]
                                   (doseq [{:keys [name]} devices]
                                     (instrument-device package-name name)))
-                                (Thread/sleep 10000)
+                                (android/ready)
                                 (info "Running calabash tests")
                                 (android/run-on-devices tests
                                                         devices))]

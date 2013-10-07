@@ -34,6 +34,19 @@
              :arguments args}))
 
 
+(defn ready*
+  []
+  (http/req {:method :post
+             :path "/ready"
+             :as :text}
+            {}))
+
+
+(defn ready
+  []
+  (retry ready*))
+
+
 (defn screenshot*
   [filename]
   (run-sh (format "adb -s %s shell /system/bin/screencap -p /sdcard/screenshot.png" *device-name*)
