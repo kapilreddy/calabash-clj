@@ -8,7 +8,7 @@
 
 (def server-apk-path "/test-server/bin/Test.apk")
 
-(def server-tar "test_server.tar.gz")
+(def server-tar "test-server.tar.gz")
 
 (def android-target-version 16)
 
@@ -61,14 +61,14 @@
 
 
 (defn unlock-device
-  [device-name]
-  (run-sh (format "adb -s %s shell input keyevent 82" device-name)
-          (format "adb -s %s shell input keyevent 4" device-name)))
+  [package-name device-name]
+  (run-sh (format "adb -s %s shell am start -a android.intent.action.MAIN -n %s.test/sh.calaba.instrumenta" device-name package-name)))
 
 
 (defn instrument-device
-  [package-name device-name]
-  (future (run-sh (format "adb -s %s shell am instrument -w -e class sh.calaba.instrumentationbackend.InstrumentationBackend %s.test/sh.calaba.instrumentationbackend.CalabashInstrumentationTestRunner" device-name package-name))))
+  [apk-path device-name]
+  (let [{:keys [package-name main-activity]} (get-apk-info apk-path)]
+    (future (run-sh (format "adb -s %s shell am instrument -w -e target_package %s -e main_activity %s -e test_server_port %s -e class sh.calaba.instrumentationbackend.InstrumentationBackend %s.test/sh.calaba.instrumentationbackend.CalabashInstrumentationTestRunner" device-name package-name main-activity android-server-port  package-name)))))
 
 
 (defn start-emulators
@@ -99,10 +99,10 @@
 
 (defn copy-test-server
   [project-path]
-  (let [server-tar-name "test_server.tar.gz"
-        tmp-loc (format "/tmp/%s" server-tar-name)]
-    (copy (file (resource server-tar-name)) (file tmp-loc))
-    (run-sh (format "tar zxf %s -C %s" tmp-loc project-path))))
+  (let [tmp-loc (format "/tmp/%s" server-tar)]
+    (copy (file (resource server-tar)) (file tmp-loc))
+    (run-sh (format "rm -rf %s/test-server" project-path)
+            (format "tar zxf %s -C %s" tmp-loc project-path))))
 
 
 (defn restart-adb
@@ -148,7 +148,8 @@
   (info (format "Copying test-server to %s" project-path))
   (copy-test-server project-path)
   (info "Building project")
-  (let [apk-path (build-project project-path)]
+  (let [apk-path (build-project project-path)
+        package-name (get-apk-info apk-path)]
     (println apk-path)
     (info "Installing app on devices")
     (let [devices (map (fn [{:keys [name] :as device} n]
@@ -170,16 +171,15 @@
       (doseq [{:keys [name server-port]} devices]
         (forward-port name server-port android-server-port))
       (Thread/sleep 2000)
-      (info "Unlocking screens")
-      (doseq [{:keys [name]} devices]
-        (unlock-device name))
-      (Thread/sleep 2000)
       (info "Starting Calabash servers")
       (let [reset-&-run-tests (fn [tests]
-                                (let [{:keys [package-name]} (get-apk-info apk-path)]
-                                  (doseq [{:keys [name]} devices]
-                                    (instrument-device package-name name)))
-                                (android/ready)
+                                (doseq [{:keys [name]} devices]
+                                  (instrument-device apk-path name))
+                                (Thread/sleep 2000)
+                                (info "Unlocking screens")
+                                (doseq [{:keys [name]} devices]
+                                  (unlock-device package-name name))
+                                (Thread/sleep 6000)
                                 (info "Running calabash tests")
                                 (android/run-on-devices tests
                                                         devices))]
