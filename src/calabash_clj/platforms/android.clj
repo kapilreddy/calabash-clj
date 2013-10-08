@@ -25,6 +25,11 @@
        devices))
 
 
+(defn query
+  [query & args]
+  (http/map-views query "query"))
+
+
 (defn command
   [command & args]
   (http/req {:method :post
@@ -116,6 +121,11 @@
 
 (defn click
   [id]
-  (retry (fn []
-           (command "click_on_view_by_id"
-                    id))))
+  (command "click_on_view_by_id"
+           id))
+
+
+(defn wait
+  [id]
+  (command "wait_for_view_by_id"
+           id))
