@@ -114,11 +114,6 @@
          (run-sh (format "adb -s %s shell input text \"%s\" " *device-name* t))))))
 
 
-(defn query
-  [type selector]
-  (command "query" type selector))
-
-
 (defn click
   [id]
   (command "click_on_view_by_id"
