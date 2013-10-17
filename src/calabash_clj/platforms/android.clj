@@ -1,18 +1,31 @@
 (ns calabash-clj.platforms.android
-  (:require [calabash-jvm.http :as http]
-            [clj-http.client :as client]
-            [calabash-jvm.core :as cjc]
-            [clojure.java.io :as io])
-  (:use [calabash-clj.util :only [run-sh]]
-        [calabash-clj.platforms.util :only [retry]]
-        [calabash-clj.util :only [gen-gif]]))
+  (:require [clj-http.client :as client]
+            [clojure.java.io :as io]
+            [calabash-clj.util :refer [run-sh]]
+            [calabash-clj.platforms.util :refer [retry]]
+            [clojure.data.json :refer [write-str]]))
+
+(def ^:dynamic *conn-timeout* 5000)
+(def ^:dynamic *socket-timeout* 5000)
+
+(defn ^:dynamic *retry-handler*
+  [ex try-count http-context]
+  (<= try-count 2))
+
+(def default-spec {:content-type :json
+                   :socket-timeout *socket-timeout*
+                   :check-json? true
+                   :conn-timeout *conn-timeout*
+                   :retry-handler *retry-handler*})
 
 (def ^:dynamic *device-name* nil)
+(def ^:dynamic *endpoint* nil)
 
 
+;; Calabash-clj related commands
 (defn run-on-device
   [fn ip server-port device-name]
-  (binding [calabash-jvm.env/*endpoint* (format "http://%s:%s" ip server-port)
+  (binding [*endpoint* (format "http://%s:%s" ip server-port)
             *device-name* device-name]
     (fn)))
 
@@ -20,82 +33,51 @@
 (defn run-on-devices
   [test-fn devices]
   (map (fn [{:keys [ip server-port name]}]
-         (println ip server-port name)
          (run-on-device test-fn ip server-port name))
        devices))
 
 
-(defn query
-  [query & args]
-  (http/map-views query "query"))
+(defn calabash-post
+  [path spec body]
+  (client/post (format "%s%s" *endpoint* path)
+               (merge default-spec spec {:body (write-str body)})))
 
 
+;; Commands to run on android device through http.
 (defn command
   [command & args]
-  (http/req {:method :post
-             :path "/"
-             :as :json}
-            {:command command
-             :arguments args}))
+  (println (calabash-post "/"
+                 {:as :json}
+                 {:command command
+                  :arguments args})))
 
 
-(defn ready*
-  []
-  (http/req {:method :post
-             :path "/ready"
-             :as :text}
-            {}))
+(defn op-map [op & args]
+  {:method_name op
+   :arguments (or args [])})
 
 
-(defn ready
-  []
-  (retry ready*))
+(defn map-views
+  "Reaches the map endpoint via POST.
+   Takes a UIQuery, and op name and optional args"
+  [q op & args]
+  (get-in (calabash-post "/map"
+                 {:as :json}
+                 {:query q
+                  :operation (apply op-map op args)})
+          [:body :results]))
 
 
-(defn screenshot*
-  [filename]
-  (run-sh (format "adb -s %s shell /system/bin/screencap -p /sdcard/screenshot.png" *device-name*)
-          (format "adb -s %s pull /sdcard/screenshot.png %s" *device-name* filename)))
-
-
-(defn regex-file-seq
-  "Lazily filter a directory based on a regex."
-  [re dir]
-  (filter #(re-find re (.getPath %)) (file-seq (io/file dir))))
-
-
-(defn delete-all-files
-  [re dir]
-  (doseq [f (regex-file-seq re dir)]
-    (io/delete-file f)))
-
-
-(def screenshot-num (atom 0))
-
-
-(defn reset-screenshot-num
-  []
-  (reset! screenshot-num 0))
-
-
-(defn screenshot
-  [prefix]
-  (screenshot* (format "%s-%05d.png"
-                       prefix
-                       @screenshot-num))
-  (swap! screenshot-num inc))
-
-
-(defn generate-gif-&-cleanup
-  [prefix]
-  (gen-gif prefix)
-  (delete-all-files #".*png" ".")
-  (reset-screenshot-num))
+(defn query
+  [q]
+  (map-views q "query"))
 
 
 (defn touch
-  [type selector]
-  (command "touch" type selector))
+  [q]
+  (let [[{:keys [rect]} & _] (query q)
+        {:keys [center_x center_y]} rect]
+    (command "touch_coordinate" center_x center_y)))
 
 
 (defn press-key
@@ -124,3 +106,34 @@
   [id]
   (command "wait_for_view_by_id"
            id))
+
+
+(defn ready*
+  []
+  (client/post "/ready"
+               {:as :text}))
+
+
+(defn ready
+  []
+  (retry ready*))
+
+
+(defn screenshot*
+  [filename]
+  (run-sh (format "adb -s %s shell /system/bin/screencap -p /sdcard/screenshot.png" *device-name*)
+          (format "adb -s %s pull /sdcard/screenshot.png %s" *device-name* filename)))
+
+(def screenshot-num (atom 0))
+
+(defn reset-screenshot-num
+  []
+  (reset! screenshot-num 0))
+
+
+(defn screenshot
+  [prefix]
+  (screenshot* (format "%s-%05d.png"
+                       prefix
+                       @screenshot-num))
+  (swap! screenshot-num inc))

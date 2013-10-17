@@ -172,14 +172,17 @@
         (forward-port name server-port android-server-port))
       (Thread/sleep 2000)
       (info "Starting Calabash servers")
-      (let [reset-&-run-tests (fn [tests]
-                                (doseq [{:keys [name]} devices]
-                                  (instrument-device apk-path name))
-                                (Thread/sleep 2000)
-                                (info "Unlocking screens")
-                                (doseq [{:keys [name]} devices]
-                                  (unlock-device package-name name))
-                                (Thread/sleep 6000)
+      (let [reset-&-run-tests (fn [tests & {:keys [reset? unlock?]
+                                           :or {reset? true
+                                                unlock? true}}]
+                                (when reset?
+                                  (doseq [{:keys [name]} devices]
+                                    (instrument-device apk-path name))
+                                  (Thread/sleep 2000))
+                                (when unlock?
+                                  (info "Unlocking screens")
+                                  (doseq [{:keys [name]} devices]
+                                    (unlock-device package-name name)))
                                 (info "Running calabash tests")
                                 (android/run-on-devices tests
                                                         devices))]

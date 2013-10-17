@@ -1,5 +1,4 @@
-(ns calabash-clj.platforms.util
-  (:require [calabash-jvm.http :as http]))
+(ns calabash-clj.platforms.util)
 
 (defn retry
   [fn & {:keys [retries max-retries]
