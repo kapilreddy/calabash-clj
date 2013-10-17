@@ -62,7 +62,7 @@
 
 (defn unlock-device
   [package-name device-name]
-  (run-sh (format "adb -s %s shell am start -a android.intent.action.MAIN -n %s.test/sh.calaba.instrumenta" device-name package-name)))
+  (run-sh (format "adb -s %s shell am start -a android.intent.action.MAIN -n %s.test/sh.calaba.instrumentationbackend.WakeUp" device-name package-name)))
 
 
 (defn instrument-device
@@ -149,7 +149,7 @@
   (copy-test-server project-path)
   (info "Building project")
   (let [apk-path (build-project project-path)
-        package-name (get-apk-info apk-path)]
+        {:keys [package-name]} (get-apk-info apk-path)]
     (println apk-path)
     (info "Installing app on devices")
     (let [devices (map (fn [{:keys [name] :as device} n]
