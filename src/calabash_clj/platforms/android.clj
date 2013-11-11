@@ -46,10 +46,10 @@
 ;; Commands to run on android device through http.
 (defn command
   [command & args]
-  (println (calabash-post "/"
+  (calabash-post "/"
                  {:as :json}
                  {:command command
-                  :arguments args})))
+                  :arguments args}))
 
 
 (defn op-map [op & args]
