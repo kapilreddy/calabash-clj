@@ -32,9 +32,9 @@
 
 (defn run-on-devices
   [test-fn devices]
-  (map (fn [{:keys [ip server-port name]}]
-         (run-on-device test-fn ip server-port name))
-       devices))
+  (mapv (fn [{:keys [ip server-port name]}]
+          (run-on-device test-fn ip server-port name))
+        devices))
 
 
 (defn calabash-post

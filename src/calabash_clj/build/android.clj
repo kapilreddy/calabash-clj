@@ -178,7 +178,7 @@
                                 (when reset?
                                   (doseq [{:keys [name]} devices]
                                     (instrument-device apk-path name))
-                                  (Thread/sleep 2000))
+                                  (Thread/sleep 4000))
                                 (when unlock?
                                   (info "Unlocking screens")
                                   (doseq [{:keys [name]} devices]
