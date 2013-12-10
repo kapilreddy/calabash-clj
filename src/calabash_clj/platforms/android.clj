@@ -19,22 +19,26 @@
                    :retry-handler *retry-handler*})
 
 (def ^:dynamic *device-name* nil)
+(def ^:dynamic *device-num* nil)
 (def ^:dynamic *endpoint* nil)
 
 
 ;; Calabash-clj related commands
 (defn run-on-device
-  [fn ip server-port device-name]
-  (binding [*endpoint* (format "http://%s:%s" ip server-port)
-            *device-name* device-name]
-    (fn)))
+  [test-fn ip server-port device-name & [i]]
+  (let [let [i (or i 0)]]
+    (binding [*endpoint* (format "http://%s:%s" ip server-port)
+              *device-name* device-name
+              *device-num* i]
+      (test-fn))))
 
 
 (defn run-on-devices
   [test-fn devices]
-  (mapv (fn [{:keys [ip server-port name]}]
-          (run-on-device test-fn ip server-port name))
-        devices))
+  (mapv (fn [{:keys [ip server-port name]} i]
+          (run-on-device test-fn ip server-port name i))
+        devices
+        (range)))
 
 
 (defn calabash-post
