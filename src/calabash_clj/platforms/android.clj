@@ -100,6 +100,12 @@
          (run-sh (format "adb -s %s shell input text \"%s\" " *device-name* t))))))
 
 
+(defn delete-text
+  ([]
+     (press-key 67))
+  ([text-length]
+     (doseq [n (range 0 text-length)]
+       (press-key 67))))
 (defn click
   [id]
   (command "click_on_view_by_id"
