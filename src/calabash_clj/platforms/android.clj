@@ -106,6 +106,13 @@
   ([text-length]
      (doseq [n (range 0 text-length)]
        (press-key 67))))
+
+
+(defn download-remote-file
+  [remote-file-name local-file-name]
+  (run-sh (format "adb pull %s %s" remote-file-name local-file-name)))
+
+
 (defn click
   [id]
   (command "click_on_view_by_id"
