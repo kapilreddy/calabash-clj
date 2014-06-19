@@ -8,6 +8,7 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [clj-http "0.7.7"]
                  [org.clojure/tools.logging "0.2.6"]
-                 [org.clojure/data.json "0.2.3"]]
+                 [org.clojure/data.json "0.2.3"]
+                 [slingshot "0.10.3"]]
   :plugins [[lein-swank "1.4.4"]]
   :main calabash-clj.core)

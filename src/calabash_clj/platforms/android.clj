@@ -3,7 +3,9 @@
             [clojure.java.io :as io]
             [calabash-clj.util :refer [run-sh]]
             [calabash-clj.platforms.util :refer [retry]]
-            [clojure.data.json :refer [write-str]]))
+            [clojure.data.json :refer [write-str]]
+            [slingshot.slingshot :refer [throw+]]
+            [clojure.tools.logging :refer [info error]]))
 
 (def ^:dynamic *conn-timeout* 5000)
 (def ^:dynamic *socket-timeout* 5000)
@@ -106,6 +108,49 @@
   ([text-length]
      (doseq [n (range 0 text-length)]
        (press-key 67))))
+
+
+(defn count-connected-devices
+  []
+  ;; Decrement count b/c output contains string
+  ;; "List of devices attached"
+  (dec (count (re-seq #"device|offline"
+                      (:out (run-sh "adb devices"))))))
+
+
+(defn restart-adb-server
+  []
+  (loop [retry-count 0 device-count (count-connected-devices)]
+    (if (= retry-count 5)
+      (do
+        (error "Unable to start adb server")
+        (throw+ {:type :adb-server/timeout}))
+      (do
+        (run-sh "adb kill-server && adb start-server")
+        (when-not (= device-count (count-connected-devices))
+          (info "Unable to connect adb server. Retrying connect")
+          (recur (inc retry-count) device-count))))))
+
+
+(defn start-logcat-server
+  "Starts fresh adb logcat server, kills if already running
+
+   For more information about adb logcat:
+http://developer.android.com/tools/debugging/debugging-log.html"
+  [{:keys [log-format file-name app-name tag app-priority tag-priority all-tag-priority]}]
+  (restart-adb-server)
+  ;; remove remote file if already exists
+  (run-sh (format "adb shell rm %s" file-name))
+  ;; clear logcat buffer
+  (run-sh "adb logcat -c")
+  (run-sh (format "adb logcat -v %s -f %s %s:%s %s:%s *:%s"
+                  log-format
+                  file-name
+                  app-name
+                  app-priority
+                  tag
+                  tag-priority
+                  all-tag-priority)))
 
 
 (defn download-remote-file
