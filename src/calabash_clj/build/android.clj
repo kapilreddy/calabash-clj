@@ -55,6 +55,12 @@
   (run-sh (format "adb -s %s install -r %s" device-name apk-path)))
 
 
+(defn uninstall-app
+  [apk-path device-name]
+  (let [{:keys [package-name]} (get-apk-info apk-path)]
+    (run-sh (format "adb -s %s shell pm uninstall -k %s" device-name package-name))))
+
+
 (defn forward-port
   [device-name local remote]
   (run-sh (format"adb -s %s forward tcp:%s tcp:%s" device-name local remote)))
@@ -164,6 +170,7 @@
                        (parse-devices-list (list-devices))
                        (range 5010 5100))]
       (doseq [{:keys [name]} devices]
+        (uninstall-app apk-path name)
         (install-apk apk-path name)
         (install-apk (str project-path server-apk-path) name))
       (Thread/sleep 2000)
