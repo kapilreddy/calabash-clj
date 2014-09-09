@@ -111,13 +111,6 @@
             (format "tar zxf %s -C %s" tmp-loc project-path))))
 
 
-(defn restart-adb
-  []
-  (run-sh
-   "adb kill-server"
-   "adb start-server"))
-
-
 (defn get-device-ip*
   [name interface]
   (let [ip-out (:out (run-sh
@@ -200,7 +193,7 @@
 (defn run-on-emulators
   "Build a project and run tests on list of emulators"
   [emulators project-path calabash-tests]
-  (restart-adb)
+  (android/restart-adb-server)
   (info "Starting emulators")
   (start-emulators emulators)
   (wait-for-emulators emulators)
