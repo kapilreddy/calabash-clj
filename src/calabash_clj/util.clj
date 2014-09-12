@@ -17,3 +17,10 @@
   [dir & commands]
   (binding [shell/*sh-dir* dir]
     (apply run-sh commands)))
+
+
+(defn some-truthy
+  "Check to see if the input map contains at least one of the keys ks
+  The value against the key should be non-nil."
+  [m & ks]
+  (some #(not= (m %) nil) ks))
