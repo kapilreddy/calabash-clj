@@ -18,7 +18,7 @@ The following code block will do these things.
          '[calabash-clj.platforms.android :as android])
 
 (android-build/run-on-emulators ["froyo" "gingerbread"] ;; List of emulator avds.
-                                "/path/to/android-project/"
+                                {:project-path "/path/to/android-project/"}
                                 (fn []
                                   ;; Write calabash queries
                                   (android/command "click_on_view_by_id" "button1")))
@@ -33,7 +33,7 @@ To run it on connected physical devices and emulators.
 (require '[calabash-clj.build.android :as android-build]
          '[calabash-clj.platforms.android :as android])
 
-(android-build/run-on-connected-devices "/path/to/android-project/"
+(android-build/run-on-connected-devices {:project-path "/path/to/android-project/"}
                                         (fn []
                                           ;; Write calabash queries
                                           (android/command "click_on_view_by_id" "button1")))
