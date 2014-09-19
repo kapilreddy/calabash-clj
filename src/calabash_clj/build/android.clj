@@ -2,7 +2,7 @@
   (:require [calabash-clj.platforms.android :as android])
   (:use [clojure.tools.logging :only [info error]]
         [clojure.java.io :only [resource copy file]]
-        [calabash-clj.util :only [run-sh run-with-dir]]))
+        [calabash-clj.util :only [run-sh run-with-dir some-truthy]]))
 
 (def android-server-port 7102)
 
@@ -10,7 +10,16 @@
 
 (def server-tar "test-server.tar.gz")
 
-(def android-target-version 16)
+(def android-target-version 19)
+
+
+(defn get-parent-directory
+  "Returns parent directory of given file path"
+  [file-path]
+  (let [command-output (:out (run-sh (str "dirname " file-path)))]
+    (str (second (re-find #"(.*)\n"
+                     command-output))
+         "/")))
 
 
 (defn get-apk-info
@@ -19,6 +28,8 @@
     {:package-name (second (re-find #"package: name='([0-9a-zA-Z\.]*)'"
                                     apk-info-str))
      :main-activity (second (re-find #"launchable-activity: name='([0-9a-zA-Z\.]*)'"
+                                     apk-info-str))
+     :target-version (second (re-find #"targetSdkVersion:'([0-9a-zA-Z\.]*)'"
                                      apk-info-str))}))
 
 
@@ -28,26 +39,41 @@
                    build-output)))
 
 
-(defn build-project
+(defn build-android-project
+  "Builds android project and returns apk path"
   [project-path]
-  (let [build-output (run-with-dir
-                       project-path
-                       (format "android update project -p . --target %s" android-target-version)
-                       "ant clean"
-                       "ant -e debug")]
+  (let [build-output (run-with-dir project-path
+                                   (format "android update project -p . --target %s" android-target-version)
+                                   "ant clean"
+                                   "ant -e debug")]
     (if (seq (:err build-output))
       (throw (Exception. (:err build-output)))
-      (let [apk-path (build-output->apk-name (:out build-output))
-            {:keys [package-name main-activity]} (get-apk-info apk-path)
-            test-build-command (format "ant -e package -Dtested.package_name=\"%s\" -Dtested.main_activity=\"%s\" -Dtested.project.apk=\"%s\" -Dandroid.api.level=\"%s\" -Dkey.store=\"$HOME/.android/debug.keystore\" -Dkey.store.password=\"android\" -Dkey.alias=\"androiddebugkey\" -Dkey.alias.password=\"android\" "
-                                       package-name main-activity apk-path android-target-version)
-            test-build-op (run-with-dir
-                            (str project-path "test-server")
-                            "ant clean"
-                            test-build-command)]
-        (if (seq (:err test-build-op))
-          (throw (Exception. (:err test-build-op)))
-          apk-path)))))
+      (build-output->apk-name (:out build-output)))))
+
+
+(defn copy-test-server
+  [project-path]
+  (let [tmp-loc (format "/tmp/%s" server-tar)]
+    (copy (file (resource server-tar)) (file tmp-loc))
+    (run-sh (format "rm -rf %s/test-server" project-path)
+            (format "tar zxf %s -C %s" tmp-loc project-path))))
+
+
+(defn build-test-server
+  "Build calabash test server."
+  [apk-path]
+  (let [server-directory-path (get-parent-directory apk-path)]
+    (info (format "Copying test-server to %s" server-directory-path))
+    (copy-test-server server-directory-path)
+    (let [{:keys [package-name main-activity]} (get-apk-info apk-path)
+          test-build-command (format "ant -e package -Dtested.package_name=\"%s\" -Dtested.main_activity=\"%s\" -Dtested.project.apk=\"%s\" -Dandroid.api.level=\"%s\" -Dkey.store=\"$HOME/.android/debug.keystore\" -Dkey.store.password=\"android\" -Dkey.alias=\"androiddebugkey\" -Dkey.alias.password=\"android\" "
+                                     package-name main-activity apk-path android-target-version)
+          test-build-op (run-with-dir
+                         (str server-directory-path "test-server")
+                         "ant clean"
+                         test-build-command)]
+      (when (seq (:err test-build-op))
+        (throw (Exception. (:err test-build-op)))))))
 
 
 (defn install-apk
@@ -103,14 +129,6 @@
        (get-device-lines device-list-str)))
 
 
-(defn copy-test-server
-  [project-path]
-  (let [tmp-loc (format "/tmp/%s" server-tar)]
-    (copy (file (resource server-tar)) (file tmp-loc))
-    (run-sh (format "rm -rf %s/test-server" project-path)
-            (format "tar zxf %s -C %s" tmp-loc project-path))))
-
-
 (defn restart-adb
   []
   (run-sh
@@ -149,13 +167,33 @@
 
 
 (defn run-on-connected-devices
-  "Build a project and run tests on list of emulators"
-  [project-path calabash-tests]
-  (info (format "Copying test-server to %s" project-path))
-  (copy-test-server project-path)
-  (info "Building project")
-  (let [apk-path (build-project project-path)
+  "Build a project and run tests on list of emulators
+
+   opts: {:project-path - path to android project.
+          :apk-path - path to apk file}
+   calabash-tests: calabash queries
+
+   For Ex.:
+   (run-on-connected-devices {:apk-path \"path/to/apk-file\"}
+                             (fn []
+                               ;; Write calabash queries
+                               (android/click \"button1\"))
+
+  OR
+  (run-on-connected-devices {:project-path \"path/to/android-project/\"
+                             (fn []
+                               ;; Write calabash queries
+                               (android/click \"button1\"))"
+  [{:keys [project-path apk-path]
+    :as opts} calabash-tests]
+  {:pre [(some-truthy opts :project-path :apk-path)]}
+  (let [{:keys [project-path apk-path]} opts
+        apk-path (if apk-path
+                   apk-path
+                   (build-android-project project-path))
         {:keys [package-name]} (get-apk-info apk-path)]
+    (info "Building project")
+    (build-test-server apk-path)
     (println apk-path)
     (info "Installing app on devices")
     (let [devices (map (fn [{:keys [name] :as device} n]
@@ -172,7 +210,9 @@
       (doseq [{:keys [name]} devices]
         (uninstall-app apk-path name)
         (install-apk apk-path name)
-        (install-apk (str project-path server-apk-path) name))
+        (install-apk (str (get-parent-directory apk-path)
+                          server-apk-path)
+                     name))
       (Thread/sleep 2000)
       (info "Port forwarding for devices")
       (doseq [{:keys [name server-port]} devices]
@@ -199,9 +239,9 @@
 
 (defn run-on-emulators
   "Build a project and run tests on list of emulators"
-  [emulators project-path calabash-tests]
+  [emulators opts calabash-tests]
   (restart-adb)
   (info "Starting emulators")
   (start-emulators emulators)
   (wait-for-emulators emulators)
-  (run-on-connected-devices project-path calabash-tests))
+  (run-on-connected-devices opts calabash-tests))
