@@ -96,11 +96,12 @@
 
 (defn parse-devices-list
   [device-list-str]
-  (map (fn [str]
-         (let [[name status] (clojure.string/split str #"\t")]
-           {:name name
-            :status status}))
-       (get-device-lines device-list-str)))
+  (filter :status
+          (map (fn [str]
+                 (let [[name status] (clojure.string/split str #"\t")]
+                   {:name name
+                    :status status}))
+               (get-device-lines device-list-str))))
 
 
 (defn copy-test-server
