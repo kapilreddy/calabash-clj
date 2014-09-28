@@ -96,11 +96,12 @@
 
 (defn parse-devices-list
   [device-list-str]
-  (map (fn [str]
-         (let [[name status] (clojure.string/split str #"\t")]
-           {:name name
-            :status status}))
-       (get-device-lines device-list-str)))
+  (filter :status
+          (map (fn [str]
+                 (let [[name status] (clojure.string/split str #"\t")]
+                   {:name name
+                    :status status}))
+               (get-device-lines device-list-str))))
 
 
 (defn copy-test-server
@@ -109,13 +110,6 @@
     (copy (file (resource server-tar)) (file tmp-loc))
     (run-sh (format "rm -rf %s/test-server" project-path)
             (format "tar zxf %s -C %s" tmp-loc project-path))))
-
-
-(defn restart-adb
-  []
-  (run-sh
-   "adb kill-server"
-   "adb start-server"))
 
 
 (defn get-device-ip*
@@ -200,7 +194,7 @@
 (defn run-on-emulators
   "Build a project and run tests on list of emulators"
   [emulators project-path calabash-tests]
-  (restart-adb)
+  (android/restart-adb-server)
   (info "Starting emulators")
   (start-emulators emulators)
   (wait-for-emulators emulators)
